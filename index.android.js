@@ -9,9 +9,18 @@ import {
   AppRegistry,
   StyleSheet,
   Text,
-  View
+  View,
+  Dimensions
 } from 'react-native';
 import MapView from 'react-native-maps';
+
+const { width, height} = Dimensions.get('window')
+
+const SCREEN_HEIGHT = height;
+const SCREEN_WIDTH = width;
+const ASPECT_RATIO = width/height;
+const LATITUDE_DELTA = 0.0922;
+const LONGITUDE_DELTA  = LATITUDE_DELTA * ASPECT_RATIO
 
 const styles = StyleSheet.create({
   container: {
@@ -56,30 +65,69 @@ export default class Tested extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      region: {
-        latitude: 37.78825,
-        longitude: -122.4324,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
+      initialPosition: {
+        latitude: 0,
+        longitude: 0,
+        latitudeDelta: 0,
+        longitudeDelta: 0,
+      },
+      markerPosition: {
+        latitude: 0,
+        longitude: 0
       }
     }
   }
 
-  onRegionChange(region) {
-    this.setState({ region })
+  watchID: ?number = null
+
+  componentDidMount() {
+    navigator.geolocation.getCurrentPosition((position) => {
+      var lat = parseFloat(position.coords.latitude)
+      var longy = parseFloat(position.coords.longitude)
+
+      var initialRegion = {
+        latitude: lat,
+        longitude: longy,
+        latitudeDelta: LATITUDE_DELTA,
+        longitudeDelta: LONGITUDE_DELTA
+      }
+      this.setState({ initialPosition: initialRegion})
+      this.setState({ markerPosition: initialRegion})
+    }, (error) => alert(JSON.stringify(error))
+    )
+    // navigator.geolocation.getCurrentPosition((position) => {
+    //   console.log(position)
+    // }, (error) => {
+    //   console.log(error)
+    // })
+
+    this.watchID = navigator.geolocation.watchPosition((positon) => {
+      var lat = parseFloat(positon.coords.latitude)
+      var longy = parseFloat(positon.coords.longitude)
+
+      var lastRegion = {
+        latitude: lat,
+        longitude: longy,
+        longitudeDelta: LONGITUDE_DELTA,
+        latitudeDelta: LATITUDE_DELTA
+      }
+      this.setState({ initialPosition: lastRegion })
+      this.setState({ markerPosition: lastRegion})
+    })
+  }
+
+  componentWillUnmount() {
+    navigator.geolocation.clearwatch(this.watchID)
   }
 
   render() {
     return (
       <MapView
         style={styles.map}
-        region={this.state.region}
+        region={this.state.initialPosition}
       >
         <MapView.Marker
-          coordinate={{
-            latitude: 37.78825,
-            longitude: -122.4324,
-          }}
+          coordinate={this.state.markerPosition}
         >
           <View style={styles.radius}>
             <View style={styles.marker} />
